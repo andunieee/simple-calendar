@@ -1,211 +1,252 @@
-use std::cell::Cell;
-use std::rc::Rc;
+use chrono::{Datelike, Local, NaiveDate};
+use freya::prelude::*;
 
-use chrono::{Datelike, NaiveDate};
-use slint::{ModelRc, SharedString, VecModel};
+const MONTH_NAMES: [&str; 12] = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
+const DAY_NAMES: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-slint::include_modules!();
+const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
+const SURFACE0: (u8, u8, u8) = (0x31, 0x32, 0x44);
+const SURFACE1: (u8, u8, u8) = (0x45, 0x47, 0x5a);
+const SURFACE2: (u8, u8, u8) = (0x58, 0x5b, 0x70);
+const TEXT: (u8, u8, u8) = (0xcd, 0xd6, 0xf4);
+const BLUE: (u8, u8, u8) = (0x89, 0xb4, 0xfa);
+const RED: (u8, u8, u8) = (0xf3, 0x8b, 0xa8);
+const PINK: (u8, u8, u8) = (0xf5, 0xc2, 0xe7);
+const OVERLAY0: (u8, u8, u8) = (0x6c, 0x70, 0x86);
 
-fn main() -> Result<(), slint::PlatformError> {
-    let app = MainWindow::new()?;
-
-    let current_year: i32 = chrono::Local::now().year();
-    let current_month: u32 = chrono::Local::now().month();
-
-    let year = Rc::new(Cell::new(current_year));
-    let month = Rc::new(Cell::new(current_month));
-
-    update_calendar(&app, current_year, current_month);
-
-    let app_weak = app.as_weak();
-
-    // Month navigation callbacks
-    app.on_prev_month({
-        let app_weak = app_weak.clone();
-        let year = year.clone();
-        let month = month.clone();
-        move || {
-            let (new_year, new_month) = if month.get() == 1 {
-                (year.get() - 1, 12)
-            } else {
-                (year.get(), month.get() - 1)
-            };
-            year.set(new_year);
-            month.set(new_month);
-            if let Some(app) = app_weak.upgrade() {
-                update_calendar(&app, new_year, new_month);
-            }
-        }
-    });
-
-    app.on_next_month({
-        let app_weak = app_weak.clone();
-        let year = year.clone();
-        let month = month.clone();
-        move || {
-            let (new_year, new_month) = if month.get() == 12 {
-                (year.get() + 1, 1)
-            } else {
-                (year.get(), month.get() + 1)
-            };
-            year.set(new_year);
-            month.set(new_month);
-            if let Some(app) = app_weak.upgrade() {
-                update_calendar(&app, new_year, new_month);
-            }
-        }
-    });
-
-    // Year navigation callbacks
-    app.on_prev_year({
-        let app_weak = app_weak.clone();
-        let year = year.clone();
-        let month = month.clone();
-        move || {
-            let new_year = year.get() - 1;
-            year.set(new_year);
-            if let Some(app) = app_weak.upgrade() {
-                update_calendar(&app, new_year, month.get());
-            }
-        }
-    });
-
-    app.on_next_year({
-        let app_weak = app_weak.clone();
-        let year = year.clone();
-        let month = month.clone();
-        move || {
-            let new_year = year.get() + 1;
-            year.set(new_year);
-            if let Some(app) = app_weak.upgrade() {
-                update_calendar(&app, new_year, month.get());
-            }
-        }
-    });
-
-    // Year changed from text input
-    app.on_year_changed({
-        let app_weak = app_weak.clone();
-        let year = year.clone();
-        let month = month.clone();
-        move |text: SharedString| {
-            if let Ok(new_year) = text.parse::<i32>() {
-                if new_year > 0 && new_year < 10000 {
-                    year.set(new_year);
-                    if let Some(app) = app_weak.upgrade() {
-                        update_calendar(&app, new_year, month.get());
-                    }
-                }
-            }
-        }
-    });
-
-    // Month changed from text input
-    app.on_month_changed({
-        let app_weak = app_weak.clone();
-        let year = year.clone();
-        let month = month.clone();
-        move |text: SharedString| {
-            let month_names = [
-                "january",
-                "february",
-                "march",
-                "april",
-                "may",
-                "june",
-                "july",
-                "august",
-                "september",
-                "october",
-                "november",
-                "december",
-            ];
-            let text_lower = text.to_lowercase();
-
-            // Try to parse as number first
-            if let Ok(new_month) = text.parse::<u32>() {
-                if new_month >= 1 && new_month <= 12 {
-                    month.set(new_month);
-                    if let Some(app) = app_weak.upgrade() {
-                        update_calendar(&app, year.get(), new_month);
-                    }
-                    return;
-                }
-            }
-
-            // Try to parse as month name
-            if let Some(idx) = month_names
-                .iter()
-                .position(|&name| name == text_lower.as_str())
-            {
-                let new_month = (idx + 1) as u32;
-                month.set(new_month);
-                if let Some(app) = app_weak.upgrade() {
-                    update_calendar(&app, year.get(), new_month);
-                }
-            }
-        }
-    });
-
-    app.run()
+fn main() {
+    launch(
+        LaunchConfig::new().with_window(
+            WindowConfig::new(app)
+                .with_title("Calendar")
+                .with_size(440., 520.)
+                .with_background(BASE),
+        ),
+    )
 }
 
-fn update_calendar(app: &MainWindow, year: i32, month: u32) {
-    let month_names = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
+fn app() -> impl IntoElement {
+    let now = Local::now();
+    let mut year = use_state(|| now.year());
+    let mut month = use_state(|| now.month());
+    let mut year_text = use_state(|| now.year().to_string());
+    let mut month_text = use_state(|| MONTH_NAMES[now.month0() as usize].to_string());
 
-    app.set_year_label(SharedString::from(year.to_string()));
-    app.set_month_label(SharedString::from(month_names[(month - 1) as usize]));
+    let mut set_view = move |new_year: i32, new_month: u32| {
+        year.set(new_year);
+        month.set(new_month);
+        year_text.set(new_year.to_string());
+        month_text.set(MONTH_NAMES[(new_month - 1) as usize].to_string());
+    };
 
-    let first_day = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
-    let days_in_month = days_in_month(year, month);
-    let start_weekday = first_day.weekday().num_days_from_sunday() as usize;
-
-    let mut days: Vec<SharedString> = vec![SharedString::from(""); 49];
-
-    for day in 1..=days_in_month {
-        let idx = start_weekday + (day as usize) - 1;
-        if idx < 42 {
-            days[idx] = SharedString::from(day.to_string());
+    let mut prev_month = move || {
+        if month() == 1 {
+            set_view(year() - 1, 12)
+        } else {
+            set_view(year(), month() - 1)
         }
-    }
+    };
+    let mut next_month = move || {
+        if month() == 12 {
+            set_view(year() + 1, 1)
+        } else {
+            set_view(year(), month() + 1)
+        }
+    };
+    let mut prev_year = move || set_view(year() - 1, month());
+    let mut next_year = move || set_view(year() + 1, month());
 
-    let model = ModelRc::new(VecModel::from(days));
-    app.set_days(model);
+    let on_year_submit = move |text: String| {
+        match text.trim().parse::<i32>() {
+            Ok(y) if y > 0 && y < 10000 => set_view(y, month()),
+            _ => set_view(year(), month()),
+        }
+    };
+    let on_month_submit = move |text: String| {
+        let text = text.trim().to_lowercase();
+        let parsed = text
+            .parse::<u32>()
+            .ok()
+            .filter(|m| (1..=12).contains(m))
+            .or_else(|| {
+                MONTH_NAMES
+                    .iter()
+                    .position(|name| name.to_lowercase() == text)
+                    .map(|idx| idx as u32 + 1)
+            });
+        set_view(year(), parsed.unwrap_or(month()));
+    };
 
-    // Calculate today's index if we're viewing the current month
-    let today = chrono::Local::now();
-    if year == today.year() && month == today.month() {
-        let today_idx = start_weekday + (today.day() as usize) - 1;
-        app.set_today_index(today_idx as i32);
+    rect()
+        .expanded()
+        .background(BASE)
+        .vertical()
+        .main_align(Alignment::Center)
+        .cross_align(Alignment::Center)
+        .spacing(8.)
+        .padding(12.)
+        .on_global_key_down(move |e: Event<KeyboardEventData>| match e.key {
+            Key::Named(NamedKey::ArrowLeft) => prev_month(),
+            Key::Named(NamedKey::ArrowRight) => next_month(),
+            Key::Named(NamedKey::ArrowUp) => next_year(),
+            Key::Named(NamedKey::ArrowDown) => prev_year(),
+            _ => {}
+        })
+        .child(
+            nav_row(8.)
+                .child(nav_button("‹", SURFACE0, SURFACE1, 20., move || prev_year()))
+                .child(
+                    nav_input(year_text, 80., SURFACE0, SURFACE2).on_submit(on_year_submit),
+                )
+                .child(nav_button("›", SURFACE0, SURFACE1, 20., move || next_year())),
+        )
+        .child(
+            nav_row(16.)
+                .child(nav_button("‹", SURFACE1, SURFACE2, 18., move || prev_month()))
+                .child(
+                    nav_input(month_text, 120., SURFACE1, SURFACE2).on_submit(on_month_submit),
+                )
+                .child(nav_button("›", SURFACE1, SURFACE2, 18., move || next_month())),
+        )
+        .child(
+            rect()
+                .horizontal()
+                .spacing(8.)
+                .children(DAY_NAMES.iter().map(|name| -> Element {
+                    rect()
+                        .width(Size::px(48.))
+                        .height(Size::px(32.))
+                        .center()
+                        .child(
+                            label()
+                                .text(*name)
+                                .font_size(12.)
+                                .font_weight(FontWeight::SEMI_BOLD)
+                                .font_family("monospace")
+                                .color(BLUE),
+                        )
+                        .into()
+                })),
+        )
+        .child(calendar_grid(year(), month()))
+        .child(
+            label()
+                .text("←→ Months  ↑↓ Years")
+                .font_size(11.)
+                .font_family("monospace")
+                .color(OVERLAY0),
+        )
+}
+
+fn nav_row(spacing: f32) -> Rect {
+    rect()
+        .horizontal()
+        .cross_align(Alignment::Center)
+        .main_align(Alignment::Center)
+        .spacing(spacing)
+}
+
+fn nav_button(
+    glyph: &'static str,
+    bg: (u8, u8, u8),
+    border: (u8, u8, u8),
+    size: f32,
+    mut on_press: impl FnMut() + 'static,
+) -> Rect {
+    rect()
+        .width(Size::px(40.))
+        .height(Size::px(36.))
+        .center()
+        .background(bg)
+        .corner_radius(6.)
+        .border(Border::new().fill(border).width(1.))
+        .on_press(move |_| on_press())
+        .child(label().text(glyph).font_size(size).color(BLUE))
+}
+
+fn nav_input(value: State<String>, width: f32, bg: (u8, u8, u8), border: (u8, u8, u8)) -> Input {
+    Input::new(value)
+        .width(Size::px(width))
+        .text_align(TextAlign::Center)
+        .theme_colors(InputColorsThemePartial {
+            background: Some(Color::from(bg).into()),
+            focus_background: Some(Color::from(bg).into()),
+            border_fill: Some(Color::from(border).into()),
+            focus_border_fill: Some(Color::from(BLUE).into()),
+            color: Some(Color::from(TEXT).into()),
+            ..Default::default()
+        })
+}
+
+fn calendar_grid(year: i32, month: u32) -> Rect {
+    let first = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+    let start = first.weekday().num_days_from_sunday();
+    let days = days_in_month(year, month);
+    let today = Local::now();
+    let today_day = (year == today.year() && month == today.month()).then(|| today.day());
+
+    // 7 rows x 7 columns, like the original layout.
+    rect().vertical().spacing(2.).children((0..7u32).map(move |row| -> Element {
+        rect()
+            .horizontal()
+            .spacing(8.)
+            .children((0..7u32).map(move |col| -> Element {
+                let idx = row * 7 + col;
+                let day = idx
+                    .checked_sub(start)
+                    .map(|d| d + 1)
+                    .filter(|d| *d <= days);
+                day_cell(day, day.is_some() && day == today_day).into()
+            }))
+            .into()
+    }))
+}
+
+fn day_cell(day: Option<u32>, is_today: bool) -> Rect {
+    let cell = rect()
+        .width(Size::px(48.))
+        .height(Size::px(40.))
+        .center()
+        .corner_radius(8.);
+    let Some(day) = day else { return cell };
+    let cell = if is_today {
+        cell.background(RED)
+            .border(Border::new().fill(PINK).width(2.))
     } else {
-        app.set_today_index(-1);
-    }
+        cell.background(SURFACE0)
+    };
+    cell.child(
+        label()
+            .text(day.to_string())
+            .font_size(14.)
+            .font_family("monospace")
+            .font_weight(if is_today {
+                FontWeight::BOLD
+            } else {
+                FontWeight::NORMAL
+            })
+            .color(if is_today { BASE } else { TEXT }),
+    )
 }
 
 fn days_in_month(year: i32, month: u32) -> u32 {
-    match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 => {
-            if (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) {
-                29
-            } else {
-                28
-            }
-        }
-        _ => 30,
-    }
+    let (ny, nm) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
+    NaiveDate::from_ymd_opt(ny, nm, 1)
+        .unwrap()
+        .pred_opt()
+        .unwrap()
+        .day()
 }

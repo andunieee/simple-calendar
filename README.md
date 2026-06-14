@@ -1,6 +1,6 @@
 # Calendar
 
-A simple desktop calendar application built with Rust and Slint.
+A simple desktop calendar application built with Rust and Freya.
 
 <img width="592" height="520" src="https://github.com/user-attachments/assets/60afb2de-7369-44c6-944c-3da2c16e3d83" />
 
