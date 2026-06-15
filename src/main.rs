@@ -43,6 +43,7 @@ fn app() -> impl IntoElement {
     let mut year = use_state(|| now.year());
     let mut month = use_state(|| now.month());
     let mut year_text = use_state(|| now.year().to_string());
+    let selected = use_state(|| None::<NaiveDate>);
     let mut month_text = use_state(|| MONTH_NAMES[now.month0() as usize].to_string());
 
     let mut set_view = move |new_year: i32, new_month: u32| {
@@ -141,11 +142,14 @@ fn app() -> impl IntoElement {
                         .into()
                 })),
         )
-        .child(calendar_grid(year(), month()))
+        .child(calendar_grid(year(), month(), selected))
         .child(
             label()
-                .text("←→ Months  ↑↓ Years")
-                .font_size(11.)
+                .text(match selected() {
+                    Some(date) => date.format("%A, %B %-d, %Y").to_string(),
+                    None => "←→ Months  ↑↓ Years".to_string(),
+                })
+                .font_size(15.)
                 .font_family("monospace")
                 .color(OVERLAY0),
         )
@@ -191,7 +195,11 @@ fn nav_input(value: State<String>, width: f32, bg: (u8, u8, u8), border: (u8, u8
         })
 }
 
-fn calendar_grid(year: i32, month: u32) -> Rect {
+fn calendar_grid(
+    year: i32,
+    month: u32,
+    mut selected: State<Option<NaiveDate>>,
+) -> Rect {
     let first = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
     let start = first.weekday().num_days_from_sunday();
     let days = days_in_month(year, month);
@@ -209,13 +217,23 @@ fn calendar_grid(year: i32, month: u32) -> Rect {
                     .checked_sub(start)
                     .map(|d| d + 1)
                     .filter(|d| *d <= days);
-                day_cell(day, day.is_some() && day == today_day).into()
+                let is_today = day.is_some() && day == today_day;
+                let date = day.and_then(|d| NaiveDate::from_ymd_opt(year, month, d));
+                let is_selected = date.is_some() && date == selected();
+                day_cell(day, is_today, is_selected)
+                    .on_press(move |_| {
+                        if let Some(date) = date {
+                            // clicking the selected day again clears the selection
+                            selected.set((selected() != Some(date)).then_some(date));
+                        }
+                    })
+                    .into()
             }))
             .into()
     }))
 }
 
-fn day_cell(day: Option<u32>, is_today: bool) -> Rect {
+fn day_cell(day: Option<u32>, is_today: bool, is_selected: bool) -> Rect {
     let cell = rect()
         .width(Size::px(48.))
         .height(Size::px(40.))
@@ -225,6 +243,9 @@ fn day_cell(day: Option<u32>, is_today: bool) -> Rect {
     let cell = if is_today {
         cell.background(RED)
             .border(Border::new().fill(PINK).width(2.))
+    } else if is_selected {
+        cell.background(SURFACE1)
+            .border(Border::new().fill(BLUE).width(2.))
     } else {
         cell.background(SURFACE0)
     };
