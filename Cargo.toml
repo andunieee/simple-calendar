@@ -1,12 +1,12 @@
 [package]
-name = "calendar"
+name = "simple-calendar"
 version = "0.2.0"
 edition = "2021"
 description = "A simple desktop calendar application"
 authors = ["George <andunieee@cassis.cash>"]
 license = "MIT"
-repository = "https://github.com/andunieee/calendar"
-homepage = "https://github.com/andunieee/calendar"
+repository = "https://github.com/andunieee/simple-calendar"
+homepage = "https://github.com/andunieee/simple-calendar"
 keywords = ["calendar", "gui", "freya", "desktop"]
 categories = ["date-and-time", "gui"]
 

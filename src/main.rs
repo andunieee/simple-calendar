@@ -31,7 +31,7 @@ fn main() {
     launch(
         LaunchConfig::new().with_window(
             WindowConfig::new(app)
-                .with_title("Calendar")
+                .with_title("Simple Calendar")
                 .with_size(440., 520.)
                 .with_background(BASE),
         ),

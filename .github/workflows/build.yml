@@ -33,17 +33,17 @@ jobs:
 
     - name: Package
       run: |
-        mkdir -p calendar-linux
-        cp target/release/calendar calendar-linux/
-        cp README.md calendar-linux/
-        cp LICENSE calendar-linux/ 2>/dev/null || echo "No LICENSE file"
-        tar czf calendar-linux-x86_64.tar.gz calendar-linux/
+        mkdir -p simple-calendar-linux
+        cp target/release/simple-calendar simple-calendar-linux/
+        cp README.md simple-calendar-linux/
+        cp LICENSE simple-calendar-linux/ 2>/dev/null || echo "No LICENSE file"
+        tar czf simple-calendar-linux-x86_64.tar.gz simple-calendar-linux/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: calendar-linux-x86_64
-        path: calendar-linux-x86_64.tar.gz
+        name: simple-calendar-linux-x86_64
+        path: simple-calendar-linux-x86_64.tar.gz
 
   release:
     needs: [build]

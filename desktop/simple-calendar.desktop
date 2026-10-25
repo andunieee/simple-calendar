@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Calendar
+Name=Simple Calendar
 Comment=A simple desktop calendar application
-Exec=calendar
-Icon=calendar
+Exec=simple-calendar
+Icon=simple-calendar
 Type=Application
 Terminal=false
 Categories=Office;Calendar;

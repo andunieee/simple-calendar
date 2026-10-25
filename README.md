@@ -1,4 +1,4 @@
-# Calendar
+# Simple Calendar
 
 A simple desktop calendar application built with Rust and Freya.
 
@@ -6,14 +6,14 @@ A simple desktop calendar application built with Rust and Freya.
 
 # Installation
 
-`cargo install calendar`
+`cargo install simple-calendar`
 
 ## Build from source
 
 ```bash
 # Clone the repository
-git clone https://github.com/andunieee/calendar.git
-cd calendar
+git clone https://github.com/andunieee/simple-calendar.git
+cd simple-calendar
 
 # Build release binary
 cargo build --release
@@ -22,11 +22,11 @@ cargo build --release
 cargo run --release
 ```
 
-The binary will be available at `target/release/calendar`.
+The binary will be available at `target/release/simple-calendar`.
 
 ## Download
 
-Pre-built binaries are available on the [releases page](https://github.com/andunieee/calendar/releases).
+Pre-built binaries are available on the [releases page](https://github.com/andunieee/simple-calendar/releases).
 
 ## License
 

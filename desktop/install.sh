@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Install script for Calendar Linux desktop integration
+# Install script for Simple Calendar Linux desktop integration
 
 set -e
 
-APP_NAME="calendar"
-DESKTOP_FILE="calendar.desktop"
-ICON_FILE="calendar.svg"
+APP_NAME="simple-calendar"
+DESKTOP_FILE="simple-calendar.desktop"
+ICON_FILE="simple-calendar.svg"
 
 # Determine install locations
 if [ -d "$HOME/.local/share/applications" ]; then
@@ -32,7 +32,7 @@ cp "$SCRIPT_DIR/$DESKTOP_FILE" "$DESKTOP_DIR/"
 
 # Update Exec path to point to the actual binary location
 # Assuming binary is in the same directory as this script's parent
-sed -i "s|Exec=calendar|Exec=$SCRIPT_DIR/../calendar|" "$DESKTOP_DIR/$DESKTOP_FILE"
+sed -i "s|Exec=simple-calendar|Exec=$SCRIPT_DIR/../simple-calendar|" "$DESKTOP_DIR/$DESKTOP_FILE"
 
 # Copy icon
 echo "Installing icon..."
@@ -45,4 +45,4 @@ if command -v update-desktop-database &> /dev/null; then
 fi
 
 echo "Installation complete!"
-echo "You can now find Calendar in your applications menu."
+echo "You can now find Simple Calendar in your applications menu."
