@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.andunieee.SimpleCalendar</id>
+  <name>Simple Calendar</name>
+  <summary>A simple desktop calendar application</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.andunieee">
+    <name>George</name>
+  </developer>
+  <description>
+    <p>A simple desktop calendar application built with Rust and Freya.</p>
+  </description>
+  <launchable type="desktop-id">io.github.andunieee.SimpleCalendar.desktop</launchable>
+  <url type="homepage">https://github.com/andunieee/simple-calendar</url>
+  <url type="bugtracker">https://github.com/andunieee/simple-calendar/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://github.com/user-attachments/assets/60afb2de-7369-44c6-944c-3da2c16e3d83</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointer</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <releases>
+    <release version="0.2.0" date="2026-10-24"/>
+  </releases>
+</component>

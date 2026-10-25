@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Simple Calendar
+Comment=A simple desktop calendar application
+Exec=simple-calendar
+Icon=io.github.andunieee.SimpleCalendar
+Type=Application
+Terminal=false
+Categories=Office;Calendar;
+Keywords=calendar;date;time;
+StartupNotify=true

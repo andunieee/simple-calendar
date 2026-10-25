@@ -6,7 +6,25 @@ A simple desktop calendar application built with Rust and Freya.
 
 # Installation
 
-`cargo install simple-calendar`
+## One-liners
+Each one downloads the latest release.
+
+**Linux** (Flatpak, recommended):
+```bash
+d=$(mktemp -d) && curl -fL "$(curl -fs https://api.github.com/repos/andunieee/simple-calendar/releases/latest | grep -o 'https://[^"]*\.flatpak')" -o "$d/simple-calendar.flatpak" && flatpak install --user -y "$d/simple-calendar.flatpak"; rm -rf "$d"
+```
+
+**macOS** (Apple Silicon):
+```
+curl -fL "$(curl -s https://api.github.com/repos/andunieee/simple-calendar/releases/latest | grep -o 'https://[^"]*macos-arm64[^"]*\.zip')" -o /tmp/simple-calendar.zip && ditto -x -k /tmp/simple-calendar.zip /Applications
+```
+
+**Windows** (PowerShell), runs the installer:
+```
+$u=((irm https://api.github.com/repos/andunieee/simple-calendar/releases/latest).assets.browser_download_url -match 'setup')[0]; iwr $u -OutFile $env:TEMP\sc-setup.exe; & $env:TEMP\sc-setup.exe
+```
+
+**Anywhere with Rust**: `cargo install simple-calendar`
 
 ## Build from source
 
@@ -26,7 +44,7 @@ The binary will be available at `target/release/simple-calendar`.
 
 ## Download
 
-Pre-built binaries are available on the [releases page](https://github.com/andunieee/simple-calendar/releases).
+Every `v*` tag publishes a `.flatpak` and a `.tar.gz` for Linux, a setup `.exe` and a `.zip` for Windows and a `.zip` with `simple-calendar.app` for Apple Silicon macOS on the [releases page](https://github.com/andunieee/simple-calendar/releases).
 
 ## License
 

@@ -1,66 +1,186 @@
-name: Build and Release
+name: Release
+
+# Build binaries when a "v" tag is pushed (and check that everything builds on PRs):
+#   linux   : x86_64 .tar.gz and a .flatpak bundle
+#   windows : x86_64 .zip and an Inno Setup installer
+#   macos   : arm64 .zip with simple-calendar.app
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
+    tags: ["v*"]
   pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 env:
   CARGO_TERM_COLOR: always
+  APP_ID: io.github.andunieee.SimpleCalendar
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
+  linux:
+    name: linux (x86_64)
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libfontconfig1-dev libfreetype6-dev
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1-dev libfreetype6-dev libclang-dev
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
-    - name: Build
-      run: cargo build --release --locked
+      - name: Check the tag matches Cargo.toml
+        if: github.ref_type == 'tag'
+        run: |
+          crate="$(cargo metadata --no-deps --format-version 1 | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' | head -1)"
+          [ "v${crate}" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != Cargo.toml version ${crate}"; exit 1; }
 
-    - name: Package
-      run: |
-        mkdir -p simple-calendar-linux
-        cp target/release/simple-calendar simple-calendar-linux/
-        cp README.md simple-calendar-linux/
-        cp LICENSE simple-calendar-linux/ 2>/dev/null || echo "No LICENSE file"
-        tar czf simple-calendar-linux-x86_64.tar.gz simple-calendar-linux/
+      - name: Build
+        run: cargo build --release --locked
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: simple-calendar-linux-x86_64
-        path: simple-calendar-linux-x86_64.tar.gz
+      - name: Package
+        run: |
+          mkdir -p dist
+          tar -czf "dist/simple-calendar-linux-x86_64-${GITHUB_REF_NAME//\//-}.tar.gz" -C target/release simple-calendar
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/
+
+  flatpak:
+    name: flatpak (x86_64)
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: simple-calendar-linux-x86_64-${{ github.ref_name }}.flatpak
+          manifest-path: packaging/flatpak/io.github.andunieee.SimpleCalendar.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+          arch: x86_64
+          upload-artifact: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: simple-calendar-linux-x86_64-${{ github.ref_name }}.flatpak
+
+  macos:
+    name: macos (arm64)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Package
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          APP="simple-calendar.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp target/release/simple-calendar "$APP/Contents/MacOS/simple-calendar"
+
+          cat > "$APP/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleIdentifier</key><string>${APP_ID}</string>
+            <key>CFBundleName</key><string>Simple Calendar</string>
+            <key>CFBundleExecutable</key><string>simple-calendar</string>
+            <key>CFBundleIconFile</key><string>SimpleCalendar</string>
+            <key>LSMinimumSystemVersion</key><string>15.0</string>
+            <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+            <key>CFBundleVersion</key><string>${VERSION}</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          EOF
+
+          brew install librsvg
+          ICONSET="$(mktemp -d)/SimpleCalendar.iconset"
+          mkdir -p "$ICONSET"
+          for size in 16 32 128 256 512; do
+            rsvg-convert -w "$size" -h "$size" "packaging/${APP_ID}.svg" -o "$ICONSET/icon_${size}x${size}.png"
+            rsvg-convert -w "$((size * 2))" -h "$((size * 2))" "packaging/${APP_ID}.svg" -o "$ICONSET/icon_${size}x${size}@2x.png"
+          done
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/SimpleCalendar.icns"
+
+          codesign --force --sign - "$APP"
+          mkdir -p dist
+          ditto -c -k --keepParent "$APP" "dist/simple-calendar-macos-arm64-${TAG}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/
+
+  windows:
+    name: windows (x86_64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p bundle dist
+          cp target/release/simple-calendar.exe LICENSE bundle/
+
+          # MSYS would rewrite the /D switches as POSIX paths, so skip its argument conversion.
+          MSYS2_ARG_CONV_EXCL='*' "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
+            "/DVersion=${VERSION}" "/DBundle=$(cygpath -w "$PWD/bundle")" "/DOutput=$(cygpath -w "$PWD/dist")" \
+            "$(cygpath -w "$PWD/packaging/windows/simple-calendar.iss")"
+          powershell -NoProfile -Command "Compress-Archive -Force -Path bundle/* -DestinationPath 'dist/simple-calendar-windows-x64-v${VERSION}.zip'"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/
 
   release:
-    needs: [build]
-    runs-on: ubuntu-latest
+    needs: [linux, flatpak, macos, windows]
     if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
     steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: artifacts/**/*
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          FLAT=$(mktemp -d); NOTES=$(mktemp)
+          cp -v -r dist/*/* "$FLAT"/
+          cat > "$NOTES" <<'EOF'
+          - **linux**: `.flatpak` (`flatpak install simple-calendar-*.flatpak`) or `.tar.gz` (plain binary).
+          - **macos**: Apple Silicon (arm64) only, unsigned — first launch: right-click > Open, or `xattr -d com.apple.quarantine simple-calendar.app`.
+          - **windows**: run the `-setup-` installer, or extract the `.zip`.
+          EOF
+          gh release create "$TAG" --verify-tag --generate-notes --notes-file "$NOTES"
+          gh release upload "$TAG" "$FLAT"/* --clobber
