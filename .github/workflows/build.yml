@@ -28,7 +28,8 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfontconfig1-dev libfreetype6-dev libclang-dev
+          sudo apt-get install -y libfontconfig1-dev libfreetype6-dev libclang-dev \
+            libgl-dev libegl-dev libgles-dev libwayland-dev
 
       - uses: dtolnay/rust-toolchain@stable
 
