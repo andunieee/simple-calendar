@@ -67,6 +67,10 @@ fn app() -> impl IntoElement {
             set_view(year(), month() + 1)
         }
     };
+    let mut go_to_today = move || {
+        let now = Local::now();
+        set_view(now.year(), now.month())
+    };
     let mut prev_year = move || set_view(year() - 1, month());
     let mut next_year = move || set_view(year() + 1, month());
 
@@ -104,6 +108,8 @@ fn app() -> impl IntoElement {
             Key::Named(NamedKey::ArrowRight) => next_month(),
             Key::Named(NamedKey::ArrowUp) => next_year(),
             Key::Named(NamedKey::ArrowDown) => prev_year(),
+            Key::Named(NamedKey::Home) => go_to_today(),
+            Key::Character(ref c) if c == "t" => go_to_today(),
             _ => {}
         })
         .child(
@@ -144,14 +150,22 @@ fn app() -> impl IntoElement {
         )
         .child(calendar_grid(year(), month(), selected))
         .child(
-            label()
-                .text(match selected() {
-                    Some(date) => date.format("%A, %B %-d, %Y").to_string(),
-                    None => "←→ Months  ↑↓ Years".to_string(),
-                })
-                .font_size(15.)
-                .font_family("monospace")
-                .color(OVERLAY0),
+            nav_row(12.)
+                .child(
+                    nav_button("Today", SURFACE0, SURFACE1, 14., move || go_to_today())
+                        .width(Size::px(64.))
+                        .height(Size::px(28.)),
+                )
+                .child(
+                    label()
+                        .text(match selected() {
+                            Some(date) => date.format("%A, %B %-d, %Y").to_string(),
+                            None => "←→ Months  ↑↓ Years  T Today".to_string(),
+                        })
+                        .font_size(15.)
+                        .font_family("monospace")
+                        .color(OVERLAY0),
+                ),
         )
 }
 
