@@ -17,15 +17,46 @@ const MONTH_NAMES: [&str; 12] = [
 ];
 const DAY_NAMES: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const BASE: (u8, u8, u8) = (0x1e, 0x1e, 0x2e);
-const SURFACE0: (u8, u8, u8) = (0x31, 0x32, 0x44);
-const SURFACE1: (u8, u8, u8) = (0x45, 0x47, 0x5a);
-const SURFACE2: (u8, u8, u8) = (0x58, 0x5b, 0x70);
-const TEXT: (u8, u8, u8) = (0xcd, 0xd6, 0xf4);
-const BLUE: (u8, u8, u8) = (0x89, 0xb4, 0xfa);
-const RED: (u8, u8, u8) = (0xf3, 0x8b, 0xa8);
-const PINK: (u8, u8, u8) = (0xf5, 0xc2, 0xe7);
-const OVERLAY0: (u8, u8, u8) = (0x6c, 0x70, 0x86);
+type Rgb = (u8, u8, u8);
+
+#[derive(Clone, Copy, PartialEq)]
+struct Palette {
+    base: Rgb,
+    surface0: Rgb,
+    surface1: Rgb,
+    surface2: Rgb,
+    text: Rgb,
+    blue: Rgb,
+    red: Rgb,
+    pink: Rgb,
+    overlay0: Rgb,
+}
+
+// Catppuccin Mocha
+const DARK: Palette = Palette {
+    base: (0x1e, 0x1e, 0x2e),
+    surface0: (0x31, 0x32, 0x44),
+    surface1: (0x45, 0x47, 0x5a),
+    surface2: (0x58, 0x5b, 0x70),
+    text: (0xcd, 0xd6, 0xf4),
+    blue: (0x89, 0xb4, 0xfa),
+    red: (0xf3, 0x8b, 0xa8),
+    pink: (0xf5, 0xc2, 0xe7),
+    overlay0: (0x6c, 0x70, 0x86),
+};
+
+// Catppuccin Latte
+const LIGHT: Palette = Palette {
+    base: (0xef, 0xf1, 0xf5),
+    surface0: (0xcc, 0xd0, 0xda),
+    surface1: (0xbc, 0xc0, 0xcc),
+    surface2: (0xac, 0xb0, 0xbe),
+    text: (0x4c, 0x4f, 0x69),
+    blue: (0x1e, 0x66, 0xf5),
+    red: (0xd2, 0x0f, 0x39),
+    pink: (0xea, 0x76, 0xcb),
+    overlay0: (0x9c, 0xa0, 0xb0),
+};
 
 fn main() {
     launch(
@@ -33,12 +64,16 @@ fn main() {
             WindowConfig::new(app)
                 .with_title("Simple Calendar")
                 .with_size(440., 520.)
-                .with_background(BASE),
+                .with_background(DARK.base),
         ),
     )
 }
 
 fn app() -> impl IntoElement {
+    let p = match *Platform::get().current_window().preferred_theme.read() {
+        PreferredTheme::Dark => DARK,
+        PreferredTheme::Light => LIGHT,
+    };
     let now = Local::now();
     let mut year = use_state(|| now.year());
     let mut month = use_state(|| now.month());
@@ -97,7 +132,7 @@ fn app() -> impl IntoElement {
 
     rect()
         .expanded()
-        .background(BASE)
+        .background(p.base)
         .vertical()
         .main_align(Alignment::Center)
         .cross_align(Alignment::Center)
@@ -114,19 +149,19 @@ fn app() -> impl IntoElement {
         })
         .child(
             nav_row(8.)
-                .child(nav_button("‹", SURFACE0, SURFACE1, 20., move || prev_year()))
+                .child(nav_button(p, "‹", p.surface0, p.surface1, 20., move || prev_year()))
                 .child(
-                    nav_input(year_text, 80., SURFACE0, SURFACE2).on_submit(on_year_submit),
+                    nav_input(p, year_text, 80., p.surface0, p.surface2).on_submit(on_year_submit),
                 )
-                .child(nav_button("›", SURFACE0, SURFACE1, 20., move || next_year())),
+                .child(nav_button(p, "›", p.surface0, p.surface1, 20., move || next_year())),
         )
         .child(
             nav_row(16.)
-                .child(nav_button("‹", SURFACE1, SURFACE2, 18., move || prev_month()))
+                .child(nav_button(p, "‹", p.surface1, p.surface2, 18., move || prev_month()))
                 .child(
-                    nav_input(month_text, 120., SURFACE1, SURFACE2).on_submit(on_month_submit),
+                    nav_input(p, month_text, 120., p.surface1, p.surface2).on_submit(on_month_submit),
                 )
-                .child(nav_button("›", SURFACE1, SURFACE2, 18., move || next_month())),
+                .child(nav_button(p, "›", p.surface1, p.surface2, 18., move || next_month())),
         )
         .child(
             rect()
@@ -143,16 +178,16 @@ fn app() -> impl IntoElement {
                                 .font_size(12.)
                                 .font_weight(FontWeight::SEMI_BOLD)
                                 .font_family("monospace")
-                                .color(BLUE),
+                                .color(p.blue),
                         )
                         .into()
                 })),
         )
-        .child(calendar_grid(year(), month(), selected))
+        .child(calendar_grid(p, year(), month(), selected))
         .child(
             nav_row(12.)
                 .child(
-                    nav_button("Today", SURFACE0, SURFACE1, 14., move || go_to_today())
+                    nav_button(p, "Today", p.surface0, p.surface1, 14., move || go_to_today())
                         .width(Size::px(64.))
                         .height(Size::px(28.)),
                 )
@@ -164,7 +199,7 @@ fn app() -> impl IntoElement {
                         })
                         .font_size(15.)
                         .font_family("monospace")
-                        .color(OVERLAY0),
+                        .color(p.overlay0),
                 ),
         )
 }
@@ -178,9 +213,10 @@ fn nav_row(spacing: f32) -> Rect {
 }
 
 fn nav_button(
+    p: Palette,
     glyph: &'static str,
-    bg: (u8, u8, u8),
-    border: (u8, u8, u8),
+    bg: Rgb,
+    border: Rgb,
     size: f32,
     mut on_press: impl FnMut() + 'static,
 ) -> Rect {
@@ -192,10 +228,10 @@ fn nav_button(
         .corner_radius(6.)
         .border(Border::new().fill(border).width(1.))
         .on_press(move |_| on_press())
-        .child(label().text(glyph).font_size(size).color(BLUE))
+        .child(label().text(glyph).font_size(size).color(p.blue))
 }
 
-fn nav_input(value: State<String>, width: f32, bg: (u8, u8, u8), border: (u8, u8, u8)) -> Input {
+fn nav_input(p: Palette, value: State<String>, width: f32, bg: Rgb, border: Rgb) -> Input {
     Input::new(value)
         .width(Size::px(width))
         .text_align(TextAlign::Center)
@@ -203,13 +239,14 @@ fn nav_input(value: State<String>, width: f32, bg: (u8, u8, u8), border: (u8, u8
             background: Some(Color::from(bg).into()),
             focus_background: Some(Color::from(bg).into()),
             border_fill: Some(Color::from(border).into()),
-            focus_border_fill: Some(Color::from(BLUE).into()),
-            color: Some(Color::from(TEXT).into()),
+            focus_border_fill: Some(Color::from(p.blue).into()),
+            color: Some(Color::from(p.text).into()),
             ..Default::default()
         })
 }
 
 fn calendar_grid(
+    p: Palette,
     year: i32,
     month: u32,
     mut selected: State<Option<NaiveDate>>,
@@ -234,7 +271,7 @@ fn calendar_grid(
                 let is_today = day.is_some() && day == today_day;
                 let date = day.and_then(|d| NaiveDate::from_ymd_opt(year, month, d));
                 let is_selected = date.is_some() && date == selected();
-                day_cell(day, is_today, is_selected)
+                day_cell(p, day, is_today, is_selected)
                     .on_press(move |_| {
                         if let Some(date) = date {
                             // clicking the selected day again clears the selection
@@ -247,7 +284,7 @@ fn calendar_grid(
     }))
 }
 
-fn day_cell(day: Option<u32>, is_today: bool, is_selected: bool) -> Rect {
+fn day_cell(p: Palette, day: Option<u32>, is_today: bool, is_selected: bool) -> Rect {
     let cell = rect()
         .width(Size::px(48.))
         .height(Size::px(40.))
@@ -255,13 +292,13 @@ fn day_cell(day: Option<u32>, is_today: bool, is_selected: bool) -> Rect {
         .corner_radius(8.);
     let Some(day) = day else { return cell };
     let cell = if is_today {
-        cell.background(RED)
-            .border(Border::new().fill(PINK).width(2.))
+        cell.background(p.red)
+            .border(Border::new().fill(p.pink).width(2.))
     } else if is_selected {
-        cell.background(SURFACE1)
-            .border(Border::new().fill(BLUE).width(2.))
+        cell.background(p.surface1)
+            .border(Border::new().fill(p.blue).width(2.))
     } else {
-        cell.background(SURFACE0)
+        cell.background(p.surface0)
     };
     cell.child(
         label()
@@ -273,7 +310,7 @@ fn day_cell(day: Option<u32>, is_today: bool, is_selected: bool) -> Rect {
             } else {
                 FontWeight::NORMAL
             })
-            .color(if is_today { BASE } else { TEXT }),
+            .color(if is_today { p.base } else { p.text }),
     )
 }
 
